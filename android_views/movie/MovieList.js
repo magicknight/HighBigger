@@ -1,55 +1,82 @@
 /**
- * 电影列表
+ * 音乐列表
  * */
-import React from 'react';
+import React, {Component} from 'react';
 import {
     StyleSheet,
-    View,
-    Image,
-    Text,
     ListView,
-    ScrollView,
-    TouchableOpacity
+    View,
+    Text,
+    TouchableOpacity,
+    Image,
 } from 'react-native';
 
 import Search from './../commom/Search';
 import Util from './../commom/Util';
 import ServiceURL from './../commom/Service';
-import webView from '../commom/MyWebView';
+import MyWebView from './../commom/MyWebView';
 
-export default class MovieList extends React.Component {
+/**
+ * moviesData : 保存已加载的所有音乐数据
+ * ds : 用于将音乐数据复制到数据源中的对象
+ * context : 保存当前组件的this对象
+ * state :
+ *      dataSource : ListView的数据源
+ *      keyword : 搜索关键字
+ *      show : 是否显示ListView
+ *      start : 即将加载第几页数据，初始为0
+ *      onLoadMoreFinished : 表示加载更多的操作是否完成
+ * */
+
+export default class MovieList extends Component {
+    moviesData;
+    ds;
+    context;
 
     constructor(props) {
         super(props);
-
-        console.log('开始加载电影页面');
-        var ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
+        console.log('开始构造MovieList组件');
+        ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
+        context = this;
+        moviesData = new Array();
         this.state = {
-            dataSource: ds.cloneWithRows([]),
-            keywords: '周星驰',
-            show: false
+            dataSource: ds.cloneWithRows(moviesData),
+            keyword: '周星驰',
+            show: false,
+            start: 0,
+            onLoadMoreFinished: true,
         };
     }
 
     render() {
-        console.log('开始渲染组件');
+        console.log("开始渲染组件");
         return (
             <View style={styles.flex_1}>
                 <View style={[styles.search, styles.row]}>
                     <View style={styles.flex_1}>
-                        <Search placeholder="请输入电影名称" onChangeText={this._changeText}/>
+                        <Search
+                            placeholder="请输入电影/演员名称"
+                            onChangeText={(val) => {
+                                console.log('搜索框文本变化为：' + val);
+                                context.setState({keyword: val});
+                            }}/>
                     </View>
-
-                    <TouchableOpacity style={styles.btn} onPress={this._getData}>
+                    <TouchableOpacity
+                        style={styles.btn}
+                        onPress={this._getData}>
                         <Text style={styles.fontFFF}>搜索</Text>
                     </TouchableOpacity>
                 </View>
+                <View style={{height: 2, backgroundColor: '#0091ff', marginTop: 4}}/>
                 {
                     this.state.show ?
                         <ListView
-                            style={{flex : 1}}
+                            style={styles.listView}
                             dataSource={this.state.dataSource}
-                            renderRow={this._renderRow}/>
+                            renderRow={this._renderRow}
+                            onEndReached={this.loadMore}
+                            renderFooter={this._renderFooter}
+                            onEndReachedThreshold={40}/>
                         :
                         Util.loading
                 }
@@ -57,121 +84,172 @@ export default class MovieList extends React.Component {
         );
     }
 
-    _renderRow(row) {
-        console.log('开始渲染每一行数据');
+    componentDidMount() {
+        console.log("组件装载完毕，开始从网络上获取数据。");
+        context._getData();
+    }
 
+    _renderRow(row) {
+        console.log('***********************');
+        console.log('渲染行数据：' + JSON.stringify(row));
+
+        var title = row.title;
+        var mainActors = '';
         var casts = row.casts;
-        var names = [];
-        for (var i = 0; i < casts.length; i++) {
-            var temp = casts[i];
-            if (temp.hasOwnProperty('name')) {
-                names.push(casts[i].name);
+        for(var index = 0; index < casts.length; index ++){
+            if(index == 0){
+                mainActors = casts[index].name;
+            }else{
+                mainActors = mainActors + ' ' + casts[index].name;
             }
         }
+        var pubDate = row.year;
+        var tags = '';
+        var genres = row.genres;
+        for(var index = 0; index < genres.length; index ++){
+            if(index == 0){
+                tags = genres[index];
+            }else{
+                tags = tags + ' ' + genres[index];
+            }
+        }
+        var sumRate = row.rating.average;
+
         return (
-            <View style={[styles.row, styles.item]}>
-                <View>
-                    <Image style={styles.img} source={{uri: row.images.medium}}/>
+            <View style={styles.li_item}>
+                <Image style={styles.li_img} source={{uri: row.image}}/>
+                <View style={styles.li_info}>
+                    <Text numberOfLines={1} style={styles.li_info_line}>名称：{title}</Text>
+                    <Text numberOfLines={1} style={styles.li_info_line}>主演：{mainActors}</Text>
+                    <Text numberOfLines={1} style={styles.li_info_line}>发行时间：{pubDate}</Text>
+                    <Text numberOfLines={1} style={styles.li_info_line}>电影类型：{tags}</Text>
+                    <Text
+                        numberOfLines={1}
+                        style={styles.li_info_line}>
+                        综合评分：{sumRate}({row.rating.numRaters}人评)
+                    </Text>
                 </View>
 
-                <View>
-                    <Text style={styles.textWidth} numberOfLines={1}>
-                        名称 ： {row.title}
-                    </Text>
-
-                    <Text style={styles.textWidth} numberOfLines={1}>
-                        演员 ： {names}
-                    </Text>
-
-                    <Text style={styles.textWidth} numberOfLines={1}>
-                        评分 ： {row.rating.average}
-                    </Text>
-
-                    <Text style={styles.textWidth} numberOfLines={1}>
-                        时间 ： {row.year}
-                    </Text>
-
-                    <Text style={styles.textWidth} numberOfLines={1}>
-                        标签 ： {row.genres}
-                    </Text>
-
-                    <TouchableOpacity
-                        style={styles.goDou}>
-                        <Text>详情</Text>
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                    style={styles.li_infoDetail}
+                    onPress={() => {
+                        context.props.navigator.push({
+                            component: MyWebView,
+                            passProps: {
+                                title: title,
+                                url: row.alt,
+                                backName: '电影'
+                            }
+                        });
+                    }}>
+                    <View style={styles.li_infoDetailImg}/>
+                </TouchableOpacity>
             </View>
         );
     }
 
-    // 当组件装载成功是调用
-    componentDidMount() {
-        this._getData();
+    //根据加载更多的操作是否完成来确定是否显示底部布局
+    _renderFooter() {
+        if (typeof (context.state.onLoadMoreFinished) == 'undefined'
+            || context.state.onLoadMoreFinished == null
+            || context.state.onLoadMoreFinished) {
+            context.setState({onLoadMoreFinished: true});
+            return ( <View style={{height: 1}}/> );
+        } else {
+            return Util.loading;
+        }
     }
 
-    // 搜索框文本发生改变时就保存关键字
-    _changeText(val) {
-        this.setState({
-            keywords: val,
-        });
-    }
-
-    // 从网上获取数据的方法
     _getData() {
-        var ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
-        var that = this;
-        var BaseURL = ServiceURL.movie_seach + '?count=10&q=' + this.state.keywords;
-        this.setState({
-            show: false
+        console.log('开始从网络获取数据,设置state值完成界面更新');
+        moviesData.splice(0, moviesData.length);
+        context.setState({
+            show: false,
+            start: 0,
+            onLoadMoreFinished: true,
+            dataSource: ds.cloneWithRows(moviesData),
         });
-        Util.get(
-            BaseURL,
-            function (data) {
-                console.log('请求到的json数据为：' + JSON.stringify(data));
-                if (!data.subjects || !data.subjects.length) {
-                    return alert('电影服务出错');
+
+        var baseURL = ServiceURL.movie_seach + '?start=' + context.state.start + '&count=10&q=' + context.state.keyword;
+        console.log('网络请求的url地址为：' + baseURL);
+
+        fetch(baseURL)
+            .then((response) => response.text())
+            .then((responseText) => {
+                console.log('数据请求成功');
+                var jsonResult = eval('(' + responseText + ')');
+                var movies = jsonResult.subjects;
+                if (movies === null || movies.length === 0) {
+                    return;
                 }
-                var subjects = data.subjects;
-                that.setState({
-                    dataSource: ds.cloneWithRows(subjects),
-                    show: true
+                console.log('数据请求成功，更新state值使界面刷新');
+                moviesData = movies;
+                console.log('目前moviesData中的数据为：' + moviesData.length);
+                context.setState({
+                    dataSource: ds.cloneWithRows(moviesData),
+                    show: true,
+                    start: 1,
                 });
-            },
-            function (err) {
-                alert(err);
-            }
-        );
+            });
     }
 
-    // 在豆瓣网查看影片的详情
-    _goDouBan(title, url) {
-        this.props.navigator.push({
-            component: webView,
-            passProps: {
-                backName: '电影',
-                title: title,
-                url: url
-            }
-        });
-    }
-}
+    loadMore() {
+        console.log('*****************************');
+        console.log('滑动到了底部,开始请求更多数据');
 
+        if (!context.state.onLoadMoreFinished) {
+            console.log('加载动作正在进行，不再再次加载');
+            return;
+        }
+
+        context.setState({onLoadMoreFinished: false});
+        var baseURL = ServiceURL.movie_seach + '?start=' + context.state.start + '&count=10&q=' + context.state.keyword;
+        console.log('请求的URL地址为：' + baseURL);
+        fetch(baseURL)
+            .then((response) => response.text())
+            .then((responseText) => {
+                console.log('加载更多数据的请求成功');
+                var jsonResult = eval('(' + responseText + ')');
+                var movies = jsonResult.subjects;
+                if (movies === null || movies.length === 0) {
+                    return;
+                }
+                moviesData.push.apply(moviesData, movies);
+                console.log('更新moviesData,目前musicsData中的数据为：' + moviesData.length);
+                var currStart = context.state.start;
+                context.setState({
+                    start: currStart + 1,
+                    onLoadMoreFinished: true,
+                    dataSource: ds.cloneWithRows(moviesData),
+                });
+            });
+    }
+};
 
 var styles = StyleSheet.create({
     flex_1: {
         flex: 1,
-        marginTop: 5
+        marginTop: 5,
     },
+
     search: {
         paddingLeft: 5,
         paddingRight: 5,
         height: 45,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    listView: {
+        flex: 1
     },
     btn: {
         width: 50,
+        height: 30,
         backgroundColor: '#0091ff',
         justifyContent: 'center',
         alignItems: 'center',
+        borderRadius: 5,
     },
     fontFFF: {
         color: '#fff'
@@ -179,35 +257,75 @@ var styles = StyleSheet.create({
     row: {
         flexDirection: 'row',
     },
-    img: {
-        width: 80,
-        height: 110,
-        resizeMode: Image.resizeMode.contain,
+
+    center: {
+        justifyContent: 'center', // 项目在其所处队列中沿主轴的位置
+        alignItems: 'center', // 项目在其所处队列中沿侧轴的位置
+        // alignContent : 队列在容器中沿侧轴的位置
     },
-    textWidth: {
-        width: 200,
-        marginLeft: 10,
-    },
-    item: {
-        marginTop: 10,
-        height: 140,
-        paddingTop: 15,
-        paddingLeft: 10,
-        borderBottomWidth: Util.pixel,
+
+    //ListView每一列数据的布局
+    li_item: {
+        marginTop: 5,
+        marginBottom: 5,
         borderTopWidth: Util.pixel,
+        borderBottomWidth: Util.pixel,
         borderColor: '#ddd',
+        height: 110,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    goDou: {
+
+    //左边图片的样式
+    li_img: {
+        width: 100,
+        height: 100,
+        borderRadius: 5,
+        marginLeft: 5,
+        marginRight: 10,
+    },
+
+    //中间相关信息
+    li_info: {
+        flex: 1,
+        justifyContent: 'center',
+        marginLeft: 18,
+    },
+
+    li_info_line: {
+        textAlign: 'left',
+        fontSize: 14,
+        marginTop: 2,
+        marginBottom: 2,
+    },
+
+    //右边链接跳转的样式
+    li_infoDetail: {
+        width: 35,
         justifyContent: 'center',
         alignItems: 'center',
-        height: 32,
+        marginRight: 15,
+    },
+
+    li_infoDetailImg: {
+        width: 25,
+        height: 25,
+        borderTopWidth: 3,
+        borderRightWidth: 3,
+        borderColor: '#0091ff',
+        transform: [{rotate: '45deg'}],
+    },
+
+    textWidth: {
+        width: 120,
+    },
+
+    gouDou: {
+        height: 35,
         width: 60,
         borderWidth: Util.pixel,
-        borderColor: '#3c9bfd',
-        marginLeft: 30,
-        marginTop: 10,
-        borderRadius: 3
+        borderColor: '#3082ff',
+        borderRadius: 3,
     },
 });
-
 

@@ -17,28 +17,34 @@ import ServiceURL from './../commom/Service';
 import MyWebView from './../commom/MyWebView';
 
 /**
+ * musicsData : 保存已加载的所有音乐数据
+ * ds : 用于将音乐数据复制到数据源中的对象
  * context : 保存当前组件的this对象
  * state :
- *      dataSource :
- *      keyword :
- *      show :
- *      start : 当前已经加载了多少页数据，初始为-1，表示未加载
+ *      dataSource : ListView的数据源
+ *      keyword : 搜索关键字
+ *      show : 是否显示ListView
+ *      start : 即将加载第几页数据，初始为0
  *      onLoadMoreFinished : 表示加载更多的操作是否完成
  * */
 
 export default class MusicList extends Component {
+    musicsData;
+    ds;
     context;
 
     constructor(props) {
         super(props);
-        var ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
+        ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         context = this;
+        musicsData = new Array();
         this.state = {
-            dataSource: ds.cloneWithRows([]),
+            dataSource: ds.cloneWithRows(musicsData),
             keyword: '周杰伦',
             show: false,
-            start: -1,
-            onLoadMoreFinished : true,
+            start: 0,
+            onLoadMoreFinished: true,
+            isGetingData : false,
         };
     }
 
@@ -52,15 +58,12 @@ export default class MusicList extends Component {
                             placeholder="请输入歌曲/歌手名称"
                             onChangeText={(val) => {
                                 console.log('搜索框文本变化为：' + val);
-                                this.setState({keyword: val});
+                                context.setState({keyword: val});
                             }}/>
                     </View>
                     <TouchableOpacity
                         style={styles.btn}
-                        onPress={() => {
-                            console.log('搜索按钮被点击');
-                            this._getData();
-                        }}>
+                        onPress={this._getData}>
                         <Text style={styles.fontFFF}>搜索</Text>
                     </TouchableOpacity>
                 </View>
@@ -68,11 +71,12 @@ export default class MusicList extends Component {
                 {
                     this.state.show ?
                         <ListView
-                            style={styles.listView}
-                            dataSource={this.state.dataSource}
-                            renderRow={this._renderRow}
-                            onEndReached={this.loadMore}
-                            renderFooter={this._renderFooter}/>
+                        style={styles.listView}
+                        dataSource={this.state.dataSource}
+                        renderRow={this._renderRow}
+                        onEndReached={this.loadMore}
+                        renderFooter={this._renderFooter}
+                        onEndReachedThreshold={40}/>
                         :
                         Util.loading
                 }
@@ -82,20 +86,51 @@ export default class MusicList extends Component {
 
     componentDidMount() {
         console.log("组件装载完毕，开始从网络上获取数据。");
-        this._getData();
+        context._getData();
     }
 
     _renderRow(row) {
-        console.log('开始渲染行数据');
+        var title = row.title;
+        var singer = row.attrs.singer[0];
+        var pubdate = null;
+        if( typeof (row.attrs.pubdate) != 'undefined'){
+            pubdate = row.attrs.pubdate[0];
+        }
+        var rate = row.rating.average;
         return (
             <View style={styles.li_item}>
                 <Image style={styles.li_img} source={{uri: row.image}}/>
 
                 <View style={styles.li_info}>
-                    <Text numberOfLines={1} style={styles.li_info_line}>专辑名称：{row.title}</Text>
-                    <Text numberOfLines={1} style={styles.li_info_line}>演唱歌手：{row.attrs.singer[0]}</Text>
-                    <Text numberOfLines={1} style={styles.li_info_line}>发行时间：{row.attrs.pubdate[0]}</Text>
-                    <Text numberOfLines={1} style={styles.li_info_line}>综合评分：{row.rating.average} ({row.rating.numRaters}人评)</Text>
+                    {
+                        typeof (title) === 'undefined' ?
+                            <View style={{height: 1}}/>
+                            :
+                            <Text numberOfLines={1} style={styles.li_info_line}>专辑名称：{title}</Text>
+                    }
+                    {
+                        typeof (singer) === 'undefined' ?
+                            <View style={{height: 1}}/>
+                            :
+                            <Text numberOfLines={1} style={styles.li_info_line}>演唱歌手：{singer}</Text>
+                    }
+                    {
+                        ((null == pubdate) || typeof (pubdate) === 'undefined') ?
+                            <View style={{height: 1}}/>
+                            :
+                            <Text numberOfLines={1} style={styles.li_info_line}>发行时间：{pubdate}</Text>
+                    }
+                    {
+                        typeof (rate) === 'undefined' ?
+                            <View style={{height: 1}}/>
+                            :
+                            <Text
+                                numberOfLines={1}
+                                style={styles.li_info_line}>
+                                综合评分：{rate}({row.rating.numRaters}人评)
+                            </Text>
+                    }
+
                 </View>
 
                 <TouchableOpacity
@@ -110,7 +145,6 @@ export default class MusicList extends Component {
                             }
                         });
                     }}>
-
                     <View style={styles.li_infoDetailImg}/>
                 </TouchableOpacity>
             </View>
@@ -118,28 +152,37 @@ export default class MusicList extends Component {
     }
 
     //根据加载更多的操作是否完成来确定是否显示底部布局
-    _renderFooter(){
-        if(this.state.onLoadMoreFinished){
-            return ( <View style={{height : 0}}/> );
-        }else {
-            return ( Util.loading );
+    _renderFooter() {
+        if( typeof (context.state.onLoadMoreFinished) == 'undefined'
+            || context.state.onLoadMoreFinished == null
+            || context.state.onLoadMoreFinished){
+            context.setState({onLoadMoreFinished : true});
+            return ( <View style={{height: 1}}/> );
+        }else{
+            return Util.loading;
         }
     }
 
     _getData() {
         console.log('开始从网络获取数据');
-        console.log('搜索关键字为：' + this.state.keyword);
+        if (context.state.isGetingData){
+            console.log('正在获取数据，不再再次请求');
+            return;
+        }
 
-        console.log('先设置show值为false，完成界面更新');
-        this.setState({
+        console.log('设置state的值以更新界面');
+        musicsData.splice(0, musicsData.length);
+        context.setState({
             show: false,
-            start : 0,
+            start: 0,
+            onLoadMoreFinished: true,
+            dataSource: ds.cloneWithRows(musicsData),
+            isGetingData : true,
         });
 
-        var ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
-        var baseURL = ServiceURL.music_seach + '?start='+ this.state.start +'&count=10&q=' + this.state.keyword;
+        var baseURL = ServiceURL.music_seach + '?start=' + context.state.start + '&count=10&q=' + context.state.keyword;
         console.log('网络请求的url地址为：' + baseURL);
-        var that = this;
+
         fetch(baseURL)
             .then((response) => response.text())
             .then((responseText) => {
@@ -149,31 +192,46 @@ export default class MusicList extends Component {
                     return;
                 }
                 console.log('数据请求成功，更新state值使界面刷新');
-                that.setState({
-                    dataSource: ds.cloneWithRows(musics),
+                musicsData = musics;
+                console.log('目前musicsData中的数据为：' + musicsData.length);
+                context.setState({
+                    dataSource: ds.cloneWithRows(musicsData),
                     show: true,
-                    start : 1,
+                    start: 1,
+                    isGettingData : false,
                 });
             });
     }
 
-    loadMore(){
-        var baseURL = ServiceURL.music_seach + '?start='+ this.state.start +'&count=10&q=' + this.state.keyword;
-        var that = this;
+    loadMore() {
+        console.log('*****************************');
+        console.log('滑动到了底部,开始请求更多数据');
+
+        if( !context.state.onLoadMoreFinished){
+            console.log('加载动作正在进行，不再再次加载');
+            return;
+        }
+
+        context.setState({onLoadMoreFinished: false});
+        var baseURL = ServiceURL.music_seach + '?start=' + context.state.start + '&count=10&q=' + context.state.keyword;
+        console.log('请求的URL地址为：' + baseURL);
         fetch(baseURL)
             .then((response) => response.text())
             .then((responseText) => {
+                console.log('加载更多数据的请求成功');
                 var jsonResult = eval('(' + responseText + ')');
                 var musics = jsonResult.musics;
                 if (musics === null || musics.length === 0) {
                     return;
                 }
-                that.state.dataSource.append(musics);
-                that.setState({
-                    onLoadMoreFinished : true,
-                    start : that.start + 1,
+                musicsData.push.apply(musicsData, musics);
+                console.log('更新musicsData,目前musicsData中的数据为：' + musicsData.length);
+                var currStart = context.state.start;
+                context.setState({
+                    start: currStart + 1,
+                    onLoadMoreFinished: true,
+                    dataSource: ds.cloneWithRows(musicsData),
                 });
-                console.log('数据请求成功，更新state值使界面刷新');
             });
     }
 };

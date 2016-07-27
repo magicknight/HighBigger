@@ -41,7 +41,7 @@ export default class MyWebView extends React.Component {
                     javaScriptEnabled={true}
                     style={{width:Util.size.width,height:Util.size.height - 50}}
                     renderLoading={() => {
-                        return <ActivityIndicator color="#0091ff" styleAttr='Inverse'/>;
+                        return Util.loading;
                     }}
                     url={this.props.url}/>
             </View>

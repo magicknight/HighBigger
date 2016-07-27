@@ -2,7 +2,7 @@
  * 图书列表项，供图书列表组件和图书详情页组件调用
  * */
 
-import React from 'react';
+import React, {Component} from 'react';
 import {
     StyleSheet,
     Text,
@@ -10,15 +10,19 @@ import {
     Image,
     TouchableOpacity
 } from 'react-native';
+
 import Util from '../commom/Util';
 
-module.exports = React.createClass({
-    render : function () {
+/**
+ * row : 由父类传入的图书的相关信息
+ * */
+export default class BookItem extends Component {
+    render() {
         var row = this.props.row;
         return (
             <TouchableOpacity
                 style={[styles.row,styles.item]}
-                {...this.props}>
+                {...this.props}>  {/*其它属性也由props传入，如 : onPress*/}
                 <View style={[styles.center]}>
                     <Image source={{uri : row.image}} style={styles.book_img}/>
                 </View>
@@ -50,7 +54,7 @@ module.exports = React.createClass({
             </TouchableOpacity>
         );
     }
-});
+}
 
 var  styles = StyleSheet.create({
     row : {
