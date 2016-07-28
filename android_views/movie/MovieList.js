@@ -1,6 +1,7 @@
 /**
  * 音乐列表
  * */
+'use strict';
 import React, {Component} from 'react';
 import {
     StyleSheet,
@@ -28,17 +29,18 @@ import MyWebView from './../commom/MyWebView';
  *      onLoadMoreFinished : 表示加载更多的操作是否完成
  * */
 
+var moviesData;
+var ds;
+var context;
+
 export default class MovieList extends Component {
-    moviesData;
-    ds;
-    context;
 
     constructor(props) {
         super(props);
         console.log('开始构造MovieList组件');
         ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         context = this;
-        moviesData = new Array();
+        moviesData = [];
         this.state = {
             dataSource: ds.cloneWithRows(moviesData),
             keyword: '周星驰',
@@ -91,8 +93,7 @@ export default class MovieList extends Component {
 
     _renderRow(row) {
         console.log('***********************');
-        console.log('渲染行数据：' + JSON.stringify(row));
-
+        var imageURL = row.images.medium;
         var title = row.title;
         var mainActors = '';
         var casts = row.casts;
@@ -117,16 +118,16 @@ export default class MovieList extends Component {
 
         return (
             <View style={styles.li_item}>
-                <Image style={styles.li_img} source={{uri: row.image}}/>
+                <Image style={styles.li_img} source={{uri: imageURL}}/>
                 <View style={styles.li_info}>
-                    <Text numberOfLines={1} style={styles.li_info_line}>名称：{title}</Text>
-                    <Text numberOfLines={1} style={styles.li_info_line}>主演：{mainActors}</Text>
+                    <Text numberOfLines={1} style={styles.li_info_line}>电影名称：{title}</Text>
+                    <Text numberOfLines={1} style={styles.li_info_line}>主要演员：{mainActors}</Text>
                     <Text numberOfLines={1} style={styles.li_info_line}>发行时间：{pubDate}</Text>
                     <Text numberOfLines={1} style={styles.li_info_line}>电影类型：{tags}</Text>
                     <Text
                         numberOfLines={1}
                         style={styles.li_info_line}>
-                        综合评分：{sumRate}({row.rating.numRaters}人评)
+                        综合评分：{sumRate}分
                     </Text>
                 </View>
 
@@ -153,7 +154,7 @@ export default class MovieList extends Component {
         if (typeof (context.state.onLoadMoreFinished) == 'undefined'
             || context.state.onLoadMoreFinished == null
             || context.state.onLoadMoreFinished) {
-            context.setState({onLoadMoreFinished: true});
+            // context.setState({onLoadMoreFinished: true});
             return ( <View style={{height: 1}}/> );
         } else {
             return Util.loading;
@@ -266,12 +267,11 @@ var styles = StyleSheet.create({
 
     //ListView每一列数据的布局
     li_item: {
-        marginTop: 5,
-        marginBottom: 5,
+        marginBottom: 8,
         borderTopWidth: Util.pixel,
         borderBottomWidth: Util.pixel,
-        borderColor: '#ddd',
-        height: 110,
+        borderColor: Util.mainColor,
+        height: 120,
         flexDirection: 'row',
         alignItems: 'center',
     },

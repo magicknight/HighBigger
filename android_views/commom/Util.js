@@ -45,7 +45,10 @@ export default {
                 正在加载中，请稍后...
             </Text>
         </View>
-    )
+    ),
+
+    // APP 使用的主要颜色
+    mainColor : '#0091ff',
 }
 
 

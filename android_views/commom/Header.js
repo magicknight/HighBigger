@@ -26,15 +26,13 @@ export default class Header extends React.Component {
     constructor(props) {
         super(props);
         context = this;
-
-
     }
 
     render() {
         var obj = this.props.initObj;
         return (
             <View style={[styles.header, styles.row, styles.center]}>
-                <TouchableOpacity style={[styles.row, styles.center]} onPress={this._pop}>
+                <TouchableOpacity style={[styles.row, styles.center]} onPress={context._pop}>
                     <LeftIcon/>
                     <Text style={styles.fontFFF}>
                         {obj.backName}
@@ -58,6 +56,7 @@ export default class Header extends React.Component {
     }
 
     _pop() {
+        console.log('退回按钮被点击');
         context.props.navigator.pop(); // 弹出页面
     }
 }
@@ -73,7 +72,8 @@ var styles = StyleSheet.create({
     fontFFF: {
         color: '#fff',
         fontSize: 17,
-        fontWeight: 'bold'
+        fontWeight: 'bold',
+        alignSelf : 'center',
     },
     title: {
         flex: 1,

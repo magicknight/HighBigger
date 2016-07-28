@@ -1,6 +1,7 @@
 /**
  * 音乐列表
  * */
+'use strict';
 import React, {Component} from 'react';
 import {
     StyleSheet,
@@ -27,24 +28,24 @@ import MyWebView from './../commom/MyWebView';
  *      start : 即将加载第几页数据，初始为0
  *      onLoadMoreFinished : 表示加载更多的操作是否完成
  * */
+var context;
+var musicsData;
+var ds;
 
 export default class MusicList extends Component {
-    musicsData;
-    ds;
-    context;
 
     constructor(props) {
         super(props);
         ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         context = this;
-        musicsData = new Array();
+        musicsData = [];
         this.state = {
             dataSource: ds.cloneWithRows(musicsData),
             keyword: '周杰伦',
             show: false,
             start: 0,
             onLoadMoreFinished: true,
-            isGetingData : false,
+            isGettingData: false,
         };
     }
 
@@ -69,14 +70,14 @@ export default class MusicList extends Component {
                 </View>
                 <View style={{height: 2, backgroundColor: '#0091ff', marginTop: 4}}/>
                 {
-                    this.state.show ?
+                    this.state.show?
                         <ListView
-                        style={styles.listView}
-                        dataSource={this.state.dataSource}
-                        renderRow={this._renderRow}
-                        onEndReached={this.loadMore}
-                        renderFooter={this._renderFooter}
-                        onEndReachedThreshold={40}/>
+                            style={styles.listView}
+                            dataSource={this.state.dataSource}
+                            renderRow={this._renderRow}
+                            onEndReached={this.loadMore}
+                            renderFooter={this._renderFooter}
+                            onEndReachedThreshold={40}/>
                         :
                         Util.loading
                 }
@@ -90,10 +91,11 @@ export default class MusicList extends Component {
     }
 
     _renderRow(row) {
+        console.log('开始渲染行数据');
         var title = row.title;
         var singer = row.attrs.singer[0];
         var pubdate = null;
-        if( typeof (row.attrs.pubdate) != 'undefined'){
+        if (typeof (row.attrs.pubdate) != 'undefined') {
             pubdate = row.attrs.pubdate[0];
         }
         var rate = row.rating.average;
@@ -130,7 +132,6 @@ export default class MusicList extends Component {
                                 综合评分：{rate}({row.rating.numRaters}人评)
                             </Text>
                     }
-
                 </View>
 
                 <TouchableOpacity
@@ -153,19 +154,18 @@ export default class MusicList extends Component {
 
     //根据加载更多的操作是否完成来确定是否显示底部布局
     _renderFooter() {
-        if( typeof (context.state.onLoadMoreFinished) == 'undefined'
+        if (typeof (context.state.onLoadMoreFinished) == 'undefined'
             || context.state.onLoadMoreFinished == null
-            || context.state.onLoadMoreFinished){
-            context.setState({onLoadMoreFinished : true});
+            || context.state.onLoadMoreFinished) {
             return ( <View style={{height: 1}}/> );
-        }else{
+        } else {
             return Util.loading;
         }
     }
 
     _getData() {
         console.log('开始从网络获取数据');
-        if (context.state.isGetingData){
+        if (context.state.isGetingData) {
             console.log('正在获取数据，不再再次请求');
             return;
         }
@@ -177,7 +177,7 @@ export default class MusicList extends Component {
             start: 0,
             onLoadMoreFinished: true,
             dataSource: ds.cloneWithRows(musicsData),
-            isGetingData : true,
+            isGettingData: true,
         });
 
         var baseURL = ServiceURL.music_seach + '?start=' + context.state.start + '&count=10&q=' + context.state.keyword;
@@ -198,7 +198,7 @@ export default class MusicList extends Component {
                     dataSource: ds.cloneWithRows(musicsData),
                     show: true,
                     start: 1,
-                    isGettingData : false,
+                    isGettingData: false,
                 });
             });
     }
@@ -207,7 +207,7 @@ export default class MusicList extends Component {
         console.log('*****************************');
         console.log('滑动到了底部,开始请求更多数据');
 
-        if( !context.state.onLoadMoreFinished){
+        if (!context.state.onLoadMoreFinished) {
             console.log('加载动作正在进行，不再再次加载');
             return;
         }
@@ -276,11 +276,10 @@ var styles = StyleSheet.create({
 
     //ListView每一列数据的布局
     li_item: {
-        marginTop: 5,
-        marginBottom: 5,
+        marginBottom: 8,
         borderTopWidth: Util.pixel,
         borderBottomWidth: Util.pixel,
-        borderColor: '#ddd',
+        borderColor: Util.mainColor,
         height: 110,
         flexDirection: 'row',
         alignItems: 'center',
